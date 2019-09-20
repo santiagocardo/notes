@@ -1,4 +1,8 @@
 extends layout
 
 block content
-  p Hola #{name}, tienes #{age} años!
+  a(href="/notes/new") Nueva Nota
+  each note in notes
+    div
+      h3 #{note.id} - #{note.title}
+      p= note.body
