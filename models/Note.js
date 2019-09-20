@@ -1,10 +1,15 @@
 const mongoose = require('mongoose')
 
-const NoteSchema = mongoose.Schema({
-  title: String,
-  body: String
+const NoteSchema = new mongoose.Schema({
+  title: { type: String },
+  body: { type: String }
 })
 
-const Note = mongoose.model('Note', NoteSchema)
+NoteSchema.methods.truncateBody = function() {
+  if (this.body && this.body.length > 75) {
+    return this.body.substring(0, 70) + " ..."
+  }
+  return this.body;
+}
 
-module.exports = Note
+module.exports = mongoose.model("Note", NoteSchema)
