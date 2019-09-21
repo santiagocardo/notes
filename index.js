@@ -27,7 +27,7 @@ app.get('/notes/new', async (req, res, next) => {
   res.render('new', { notes })
 })
 
-app.post('/notes', async (req, res, next) => {
+app.post('/', async (req, res, next) => {
   const data = {
     title: req.body.title,
     body: req.body.body
