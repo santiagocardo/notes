@@ -4,10 +4,11 @@ const Note = require('./models/Note')
 const User = require('./models/User')
 const cookieSession = require('cookie-session')
 const md = require('marked')
+const PORT = process.env.PORT || 3000
 
 const app = express()
 
-mongoose.connect('mongodb://localhost:27017/notes', { useNewUrlParser: true })
+mongoose.connect('mongodb+srv://admin-santiago:Test123@cluster0-0rr3j.mongodb.net/todolistDB', { useNewUrlParser: true })
 
 app.set('view engine', 'pug')
 app.set('views', 'views')
@@ -156,4 +157,4 @@ app.get('/logout', requireUser, (req, res) => {
   res.redirect('/login')
 })
 
-app.listen(3000, () => console.log('Listening on port 3000'))
+app.listen(PORT, () => console.log(`Listening on port ${PORT}`))

@@ -4,6 +4,7 @@
   "description": "Una aplicación de toma de notas",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Santiago Cardona",
