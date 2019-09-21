@@ -15,12 +15,12 @@ app.use(cookieSession({
 }))
 app.use('/assets', express.static('assets'))
 
-app.get('/', async (req, res) => {
+app.get('/', async (req, res, next) => {
   const notes = await Note.find()
   res.render('index', { notes })
 })
 
-app.get('/notes/new', async (req, res) => {
+app.get('/notes/new', async (req, res, next) => {
   const notes = await Note.find()
   res.render('new', { notes })
 })
@@ -34,17 +34,56 @@ app.post('/notes', async (req, res, next) => {
   try {
     const note = new Note(data)
     await note.save()
-  } catch(err) {
+    res.redirect('/')
+  } catch (err) {
     return next(err)
   }
-
-  res.redirect('/')
 })
 
-app.get('/notes/:id', async (req, res) => {
+// Muestra una nota
+app.get('/notes/:id', async (req, res, next) => {
   const notes = await Note.find()
   const note = await Note.findById(req.params.id)
   res.render('show', { notes: notes, currentNote: note })
+})
+
+// Muestra el formulario para editar
+app.get('/notes/:id/edit', async (req, res, next) => {
+  try {
+    const notes = await Note.find()
+    const note = await Note.findById({ _id: req.params.id })
+    res.render('edit', { notes: notes, currentNote: note })
+  } catch (err) {
+    return next(err)
+  }
+  
+})
+
+// Actualiza una nota
+app.patch("/notes/:id", async (req, res) => {
+  const id = req.params.id
+  const note = await Note.findById(id)
+
+  note.title = req.body.title
+  note.body = req.body.body
+
+  try {
+    await note.save()
+  } catch (err) {
+    return next(err)
+  }
+
+  res.status(204).send({})
+})
+
+// Elimina una nota
+app.delete('/notes/:id', async (req, res, next) => {
+  try {
+    await Note.deleteOne({ _id: req.params.id })
+    res.status(204).send({})
+  } catch (err) {
+    return next(err)
+  }
 })
 
 app.listen(3000, () => console.log('Listening on port 3000'))
