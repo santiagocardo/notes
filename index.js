@@ -1,6 +1,7 @@
 const express = require('express')
 const mongoose = require('mongoose')
 const Note = require('./models/Note')
+const User = require('./models/User')
 const cookieSession = require('cookie-session')
 const md = require('marked')
 
@@ -17,26 +18,52 @@ app.use(cookieSession({
 }))
 app.use('/assets', express.static('assets'))
 
-app.get('/', async (req, res, next) => {
-  const notes = await Note.find()
+const requireUser = async (req, res, next) => {
+  if (!res.locals.user) {
+    return res.redirect('/login')
+  }
+
+  next()
+} 
+
+app.use(async (req, res, next) => {
+  const userId = req.session.userId
+  if (userId) {
+    const user = await User.findById(userId)
+    if (user) {
+      res.locals.user = user
+    } else {
+      delete req.session.userId
+    }
+  }
+
+  next()
+})
+
+// Muestra la lista de notas
+app.get('/', requireUser, async (req, res, next) => {
+  const notes = await Note.find({ user: res.locals.user })
   res.render('index', { notes })
 })
 
-app.get('/notes/new', async (req, res, next) => {
-  const notes = await Note.find()
+// Muestra el formulario de crear una nota
+app.get('/notes/new', requireUser, async (req, res, next) => {
+  const notes = await Note.find({ user: res.locals.user })
   res.render('new', { notes })
 })
 
-app.post('/', async (req, res, next) => {
+// Crear una nota
+app.post('/', requireUser, async (req, res, next) => {
   const data = {
     title: req.body.title,
-    body: req.body.body
+    body: req.body.body,
+    user: res.locals.user
   }
 
   try {
     const note = new Note(data)
     await note.save()
-    res.redirect('/')
+    res.redirect('/notes/' + note._id)
   } catch (err) {
     return next(err)
   }
@@ -44,15 +71,15 @@ app.post('/', async (req, res, next) => {
 
 // Muestra una nota
 app.get('/notes/:id', async (req, res, next) => {
-  const notes = await Note.find()
+  const notes = await Note.find({ user: res.locals.user })
   const note = await Note.findById(req.params.id)
   res.render('show', { notes: notes, currentNote: note, md: md })
 })
 
 // Muestra el formulario para editar
-app.get('/notes/:id/edit', async (req, res, next) => {
+app.get('/notes/:id/edit', requireUser, async (req, res, next) => {
   try {
-    const notes = await Note.find()
+    const notes = await Note.find({ user: res.locals.user })
     const note = await Note.findById({ _id: req.params.id })
     res.render('edit', { notes: notes, currentNote: note })
   } catch (err) {
@@ -60,8 +87,8 @@ app.get('/notes/:id/edit', async (req, res, next) => {
   }
 })
 
-// Actualiza una nota
-app.patch("/notes/:id", async (req, res) => {
+// Actualizar una nota
+app.patch("/notes/:id", requireUser, async (req, res) => {
   const id = req.params.id
   const note = await Note.findById(id)
 
@@ -78,13 +105,55 @@ app.patch("/notes/:id", async (req, res) => {
 })
 
 // Elimina una nota
-app.delete('/notes/:id', async (req, res, next) => {
+app.delete('/notes/:id', requireUser, async (req, res, next) => {
   try {
     await Note.deleteOne({ _id: req.params.id })
     res.status(204).send({})
   } catch (err) {
     return next(err)
   }
+})
+
+app.get('/register', (req, res) => {
+  res.render('register')
+})
+
+app.post('/register', async (req, res, next) => {
+  try {
+    const user = await User.create({
+      email: req.body.email,
+      password: req.body.password
+    })
+    res.redirect('/')
+  } catch (err) {
+    return next(err)
+  }
+  
+})
+
+app.get('/login', (req, res) => {
+  res.render('login')
+})
+
+app.post('/login', async (req, res, next) => {
+  try {
+    const user = await User.authenticate(req.body.email, req.body.password)
+    if (user) {
+      req.session.userId = user._id
+      return res.redirect('/')
+    } else {
+      res.render('login', { error: "Wrong email or password" })
+    }
+  } catch (err) {
+    return next(err)
+  }
+})
+
+app.get('/logout', requireUser, (req, res) => {
+  res.session = null
+  res.clearCookie('express:sess')
+  res.clearCookie('express:sess.sig')
+  res.redirect('/login')
 })
 
 app.listen(3000, () => console.log('Listening on port 3000'))
