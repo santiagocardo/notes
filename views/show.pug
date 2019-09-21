@@ -9,18 +9,18 @@ block body
 
   div(class="body-content")
     h1(class="body-title")= currentNote.title
-    div(class="body-text")= currentNote.body
+    div(class="body-text") !{md(currentNote.body || "")}
 
   script.
-    var btnDelete = document.querySelector(".btn-delete")
+    var btnDelete = document.querySelector(".btn-delete");
     btnDelete.addEventListener("click", function(e) {
-      e.preventDefault()
+      e.preventDefault();
 
       if (confirm("Are you sure to delete this note?")) {
         fetch("/notes/#{currentNote._id}", {
           method: "DELETE"
         }).then(response => {
-          window.location= "/"
-        })
+          window.location= "/";
+        });
       }
-    })
+    });
