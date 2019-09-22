@@ -1,14 +1,25 @@
+require('dotenv').config()
+const aws = require('aws-sdk')
 const express = require('express')
 const mongoose = require('mongoose')
 const Note = require('./models/Note')
 const User = require('./models/User')
 const cookieSession = require('cookie-session')
 const md = require('marked')
+const multer = require('multer')
+const multerS3 = require('multer-s3')
 const PORT = process.env.PORT || 3000
 
 const app = express()
 
 mongoose.connect('mongodb+srv://admin-santiago:Test123@cluster0-0rr3j.mongodb.net/todolistDB', { useNewUrlParser: true })
+const s3 = new aws.S3({
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_ID,
+    secretAccessKey: process.env.AWS_SECRET_KEY
+  },
+  region: 'us-east-2'
+})
 
 app.set('view engine', 'pug')
 app.set('views', 'views')
@@ -18,6 +29,21 @@ app.use(cookieSession({
   maxAge: 24 * 60 * 60 * 1000
 }))
 app.use('/assets', express.static('assets'))
+app.use('/uploads', express.static('uploads'))
+
+const upload = multer({
+  storage: multerS3({
+    s3: s3,
+    bucket: 'airgta',
+    acl: 'public-read',
+    metadata: function (req, file, cb) {
+      cb(null, {fieldName: file.fieldname});
+    },
+    key: function (req, file, cb) {
+      cb(null, Date.now().toString())
+    }
+  })
+})
 
 const requireUser = async (req, res, next) => {
   if (!res.locals.user) {
@@ -54,11 +80,12 @@ app.get('/notes/new', requireUser, async (req, res, next) => {
 })
 
 // Crear una nota
-app.post('/', requireUser, async (req, res, next) => {
+app.post('/', requireUser, upload.single('image'), async (req, res, next) => {
   const data = {
     title: req.body.title,
     body: req.body.body,
-    user: res.locals.user
+    user: res.locals.user,
+    image: req.file.location
   }
 
   try {
@@ -66,7 +93,12 @@ app.post('/', requireUser, async (req, res, next) => {
     await note.save()
     res.redirect('/notes/' + note._id)
   } catch (err) {
-    return next(err)
+    if (err.name === 'ValidationError') {
+      const notes = await Note.find({ user: res.locals.user })
+      res.render('new', { errors: err.errors, notes })
+    } else {
+      return next(err)
+    }
   }
 })
 
@@ -127,7 +159,12 @@ app.post('/register', async (req, res, next) => {
     })
     res.redirect('/')
   } catch (err) {
-    return next(err)
+    if (err.name === 'ValidationError') {
+      res.render('register', { errors: err.errors })
+    } else {
+      return next(err)
+    }
+    
   }
   
 })

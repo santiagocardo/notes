@@ -5,8 +5,9 @@ const NoteSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  title: { type: String },
-  body: { type: String }
+  title: { type: String, required: [true, "is required"] },
+  body: { type: String },
+  image: String
 })
 
 NoteSchema.methods.truncateBody = function() {
